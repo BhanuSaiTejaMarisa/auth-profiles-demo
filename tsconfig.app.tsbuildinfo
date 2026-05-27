@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/actiontoolbar.tsx","./src/components/bulkeditpanel.tsx","./src/components/matrixgroupsection.tsx","./src/components/profileactionmodal.tsx","./src/data/mockdata.ts"],"errors":true,"version":"5.9.3"}
