@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   Alert,
   Box,
@@ -127,6 +127,8 @@ function App() {
   const [matrixFilter, setMatrixFilter] = useState<ModalState['form'] | null>(null)
   const [bulkEditForm, setBulkEditForm] = useState<BulkEditFormState>(createBulkEditSeed())
   const [snackbar, setSnackbar] = useState<string>('')
+  const [profilePageSize, setProfilePageSize] = useState(10)
+  const [profileCurrentPage, setProfileCurrentPage] = useState(0)
 
   const filteredProfiles = useMemo(() => {
     return profiles.filter((profile) => {
@@ -159,6 +161,19 @@ function App() {
       )
     })
   }, [profileAdvancedFilter, profiles, profileSearch])
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setProfileCurrentPage(0)
+  }, [profileSearch, profileAdvancedFilter])
+
+  const paginatedProfiles = useMemo(() => {
+    const start = profileCurrentPage * profilePageSize
+    const end = start + profilePageSize
+    return filteredProfiles.slice(start, end)
+  }, [filteredProfiles, profileCurrentPage, profilePageSize])
+
+  const totalPages = Math.ceil(filteredProfiles.length / profilePageSize)
 
   const selectedProfiles = useMemo(() => {
     return profiles.filter((profile) => selectedProfileIds.includes(profile.id))
@@ -217,7 +232,7 @@ function App() {
   }
 
   const handleProfileToggleAll = () => {
-    const visibleIds = filteredProfiles.map((profile) => profile.id)
+    const visibleIds = paginatedProfiles.map((profile) => profile.id)
     const everySelected = visibleIds.every((id) => selectedProfileIds.includes(id))
 
     setSelectedProfileIds(everySelected ? [] : visibleIds)
@@ -510,8 +525,8 @@ function App() {
                       <input
                         type="checkbox"
                         checked={
-                          filteredProfiles.length > 0 &&
-                          filteredProfiles.every((profile) => selectedProfileIds.includes(profile.id))
+                          paginatedProfiles.length > 0 &&
+                          paginatedProfiles.every((profile) => selectedProfileIds.includes(profile.id))
                         }
                         onChange={handleProfileToggleAll}
                       />
@@ -523,7 +538,7 @@ function App() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredProfiles.map((profile) => {
+                  {paginatedProfiles.map((profile) => {
                     const isSelected = selectedProfileIds.includes(profile.id)
                     return (
                       <TableRow
@@ -551,6 +566,57 @@ function App() {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between', p: 1.5, borderTop: '1px solid #e0e0e0' }}>
+              <FormControl sx={{ minWidth: 100 }} size="small">
+                <InputLabel>Page Size</InputLabel>
+                <Select
+                  label="Page Size"
+                  value={profilePageSize}
+                  onChange={(event) => {
+                    setProfilePageSize(event.target.value as number)
+                    setProfileCurrentPage(0)
+                  }}
+                >
+                  <MenuItem value={5}>5 rows</MenuItem>
+                  <MenuItem value={10}>10 rows</MenuItem>
+                  <MenuItem value={25}>25 rows</MenuItem>
+                  <MenuItem value={50}>50 rows</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <button
+                  onClick={() => setProfileCurrentPage((prev) => Math.max(0, prev - 1))}
+                  disabled={profileCurrentPage === 0}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    border: '1px solid #d6deea',
+                    cursor: profileCurrentPage === 0 ? 'not-allowed' : 'pointer',
+                    opacity: profileCurrentPage === 0 ? 0.5 : 1,
+                  }}
+                >
+                  ← Previous
+                </button>
+                <Typography variant="caption" sx={{ minWidth: '120px', textAlign: 'center' }}>
+                  Page {profileCurrentPage + 1} of {totalPages || 1}
+                </Typography>
+                <button
+                  onClick={() => setProfileCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
+                  disabled={profileCurrentPage >= totalPages - 1}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    border: '1px solid #d6deea',
+                    cursor: profileCurrentPage >= totalPages - 1 ? 'not-allowed' : 'pointer',
+                    opacity: profileCurrentPage >= totalPages - 1 ? 0.5 : 1,
+                  }}
+                >
+                  Next →
+                </button>
+              </Box>
+            </Box>
           </Paper>
 
           <Paper className="panel panel-right" elevation={0}>
