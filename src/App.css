@@ -150,3 +150,84 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Full-page view (ProfilesPage, MatrixPage) ─────────────────────────── */
+
+.panel-full {
+  border: 1px solid #d9e2ef;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+/* Search bar for ProfilesPage */
+.profiles-page-search-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 160px;
+  gap: 10px;
+}
+
+/* Profiles table fills remaining height on the page */
+.profiles-page-table {
+  border: 1px solid #e2e9f3;
+  max-height: calc(100vh - 360px);
+  overflow: auto;
+}
+
+/* Pagination footer row */
+.profiles-page-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px 4px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.pagination-btn {
+  padding: 5px 14px;
+  border: 1px solid #c0cfe4;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  color: #19345e;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Filter row for MatrixPage */
+.matrix-page-filter-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+/* Matrix groups on standalone page */
+.matrix-page-groups {
+  min-height: 300px;
+  max-height: calc(100vh - 460px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+@media (max-width: 960px) {
+  .profiles-page-search-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .matrix-page-filter-row {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .profiles-page-search-grid {
+    grid-template-columns: 1fr;
+  }
+}
