@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Autocomplete,
@@ -19,6 +19,7 @@ import { BulkEditPanel } from '../components/BulkEditPanel'
 import { MatrixGroupSection } from '../components/MatrixGroupSection'
 import { useMatrixData } from '../hooks'
 import { mockProfiles, createBulkEditSeed } from '../data/mockData'
+import { MatrixService } from '../services'
 import type { MatrixRecord, BulkEditFormState } from '../types'
 import type { MatrixRecord as ApiMatrixRecord } from '../services/MatrixApiService'
 
@@ -61,47 +62,52 @@ export function MatrixPage() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [bulkEditForm, setBulkEditForm] = useState<BulkEditFormState>(createBulkEditSeed())
   const [snackbar, setSnackbar] = useState<string>('')
-  const [pageSize, setPageSize] = useState(100)
+  const [localRecords, setLocalRecords] = useState<MatrixRecord[]>([])
 
-  // ====== API Hook (filters + paginates automatically) ======
+  // ====== API Hook (filter-first + capped results) ======
   const {
     records: apiRecords,
     total,
-    page,
-    totalPages,
+    returned,
+    isCapped,
+    dataSource,
+    maxRows,
     isLoading,
     error,
-    setPage,
   } = useMatrixData({
     authProfileCodes: selectedProfileCodes,
-    page: 1,
-    pageSize,
+    maxRows: 3000,
   })
 
   // ====== Transform API records to component format ======
   const records = useMemo(() => apiRecords.map(adaptApiRecord), [apiRecords])
 
+  // Keep a local editable copy for delete/bulk-edit actions in standalone matrix view.
+  useEffect(() => {
+    setLocalRecords(records)
+  }, [records])
+
   // ====== Derived data: Group current page records by profile code ======
   const groupedRecords = useMemo(
     () =>
-      records.reduce<Record<string, MatrixRecord[]>>((groups, record) => {
+      localRecords.reduce<Record<string, MatrixRecord[]>>((groups, record) => {
         if (!groups[record.authProfileCode]) groups[record.authProfileCode] = []
         groups[record.authProfileCode].push(record)
         return groups
       }, {}),
-    [records],
+    [localRecords],
   )
 
   const selectedMatrixRecords = useMemo(
-    () => records.filter((r) => selectedMatrixIds.includes(r.id)),
-    [records, selectedMatrixIds],
+    () => localRecords.filter((r) => selectedMatrixIds.includes(r.id)),
+    [localRecords, selectedMatrixIds],
   )
 
   // ====== Handlers ======
   const handleRowSelectionChange = (recordId: string, checked: boolean) => {
     setSelectedMatrixIds((current) => {
       const next = checked ? [...current, recordId] : current.filter((id) => id !== recordId)
-      const firstRecord = records.find((r) => r.id === next[0])
+      const firstRecord = localRecords.find((r) => r.id === next[0])
       if (firstRecord) {
         setBulkEditForm({
           region: firstRecord.region,
@@ -136,8 +142,10 @@ export function MatrixPage() {
       setSnackbar('Select matrix rows before deleting.')
       return
     }
+    const updated = MatrixService.deleteMatrixRecords(localRecords, selectedMatrixIds)
+    setLocalRecords(updated)
     setSelectedMatrixIds([])
-    setSnackbar('Selected matrix rows would be deleted (mocked).')
+    setSnackbar('Selected matrix rows were removed in local page state.')
   }
 
   const handleApplyBulkEdit = () => {
@@ -145,7 +153,9 @@ export function MatrixPage() {
       setSnackbar('Select one or more matrix rows before updating them.')
       return
     }
-    setSnackbar('Selected matrix rows would be updated (mocked).')
+    const updated = MatrixService.applyBulkEdit(localRecords, selectedMatrixIds, bulkEditForm)
+    setLocalRecords(updated)
+    setSnackbar('Selected matrix rows were updated in local page state.')
   }
 
   const handleToggleExpanded = (code: string) => {
@@ -155,7 +165,6 @@ export function MatrixPage() {
   const handleProfileCodesChange = (codes: string[]) => {
     setSelectedProfileCodes(codes)
     setSelectedMatrixIds([])
-    setPage(1)
   }
 
   return (
@@ -165,7 +174,7 @@ export function MatrixPage() {
         <Box className="panel-section">
           <Typography variant="h6">Authorization Profile Matrix</Typography>
           <Typography variant="caption" color="text.secondary">
-            Real-time paginated view: {total.toLocaleString()} total records across selected profiles.
+            Filter-first matrix view for PM/PO UX review. Showing up to {maxRows.toLocaleString()} rows from {total.toLocaleString()} matched records.
           </Typography>
         </Box>
 
@@ -199,11 +208,17 @@ export function MatrixPage() {
               <CircularProgress size={16} sx={{ mr: 1 }} />
             ) : (
               <>
-                {records.length} of {total.toLocaleString()} shown
+                {returned.toLocaleString()} of {total.toLocaleString()} shown
               </>
             )}
           </Typography>
         </Box>
+
+        {isCapped && (
+          <Alert severity="info" sx={{ mb: 1.5 }}>
+            Result set capped at {maxRows.toLocaleString()} rows for UI smoothness. Add more filters to narrow the dataset.
+          </Alert>
+        )}
 
         {/* Error state */}
         {error && (
@@ -247,7 +262,7 @@ export function MatrixPage() {
         {/* Meta row */}
         <Box className="panel-section panel-meta-row">
           <Typography variant="caption">
-            Page {page} of {totalPages || 1}
+            Data source: {dataSource === 'json-server' ? 'json-server' : 'local fallback'}
           </Typography>
           <Typography variant="caption">Selected rows: {selectedMatrixIds.length}</Typography>
         </Box>
@@ -284,45 +299,6 @@ export function MatrixPage() {
             </Box>
           )}
         </Box>
-
-        {/* Pagination controls */}
-        {totalPages > 1 && (
-          <Box className="matrix-page-pagination" sx={{ borderTop: '1px solid #e0e0e0', pt: 1.5 }}>
-            <FormControl size="small" sx={{ minWidth: 110 }}>
-              <InputLabel>Page Size</InputLabel>
-              <Select
-                label="Page Size"
-                value={pageSize}
-                onChange={(e) => setPageSize(e.target.value as number)}
-                disabled={isLoading}
-              >
-                <MenuItem value={50}>50 rows</MenuItem>
-                <MenuItem value={100}>100 rows</MenuItem>
-                <MenuItem value={200}>200 rows</MenuItem>
-                <MenuItem value={500}>500 rows</MenuItem>
-              </Select>
-            </FormControl>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page <= 1 || isLoading}
-                className="pagination-btn"
-              >
-                Previous
-              </button>
-              <Typography variant="caption">
-                Page {page} of {totalPages}
-              </Typography>
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={page >= totalPages || isLoading}
-                className="pagination-btn"
-              >
-                Next
-              </button>
-            </Box>
-          </Box>
-        )}
 
         {/* Bulk edit */}
         {selectedMatrixRecords.length > 0 && (

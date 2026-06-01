@@ -3,81 +3,103 @@ import { MatrixApiService, type MatrixRecord } from '../services/MatrixApiServic
 
 export interface UseMatrixDataOptions {
   authProfileCodes: string[]
-  page?: number
-  pageSize?: number
+  maxRows?: number
 }
 
 export interface UseMatrixDataResult {
   records: MatrixRecord[]
   total: number
-  page: number
-  pageSize: number
-  totalPages: number
+  returned: number
+  maxRows: number
+  isCapped: boolean
+  dataSource: 'json-server' | 'local-fallback'
   isLoading: boolean
   error: string | null
-  setPage: (page: number) => void
   refetch: () => void
 }
 
 /**
- * Hook to fetch matrix records with pagination and filtering.
- * Simulates async API behavior with simulated delay.
+ * Hook to fetch matrix records with filter-first behavior and capped payload size.
+ * Uses json-server if available and falls back to local generated data.
  */
 export function useMatrixData({
   authProfileCodes,
-  page = 1,
-  pageSize = 100,
+  maxRows = 3000,
 }: UseMatrixDataOptions): UseMatrixDataResult {
   const [records, setRecords] = useState<MatrixRecord[]>([])
   const [total, setTotal] = useState(0)
-  const [totalPages, setTotalPages] = useState(0)
-  const [currentPage, setCurrentPage] = useState(page)
+  const [returned, setReturned] = useState(0)
+  const [isCapped, setIsCapped] = useState(false)
+  const [dataSource, setDataSource] = useState<'json-server' | 'local-fallback'>('json-server')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
-    // Simulate network delay (50-150ms) for realistic UX
-    setTimeout(() => {
+    const jsonServerBaseUrl =
+      import.meta.env.VITE_MATRIX_API_BASE_URL?.trim() || 'http://localhost:4000'
+    const params = new URLSearchParams()
+    authProfileCodes.forEach((code) => params.append('profileCode', code))
+    params.set('maxRows', String(maxRows))
+
+    try {
+      const response = await fetch(`${jsonServerBaseUrl}/matrix?${params.toString()}`)
+      if (!response.ok) {
+        throw new Error(`json-server request failed (${response.status})`)
+      }
+
+      const payload = await response.json()
+      setRecords(Array.isArray(payload.records) ? payload.records : [])
+      setTotal(Number(payload.total) || 0)
+      setReturned(Number(payload.returned) || 0)
+      setIsCapped(Boolean(payload.isCapped))
+      setDataSource('json-server')
+    } catch {
       try {
-        const response = MatrixApiService.getRecords(authProfileCodes, currentPage, pageSize)
-        setRecords(response.records)
-        setTotal(response.total)
-        setTotalPages(response.totalPages)
-        setCurrentPage(response.page)
+        const fallback = MatrixApiService.getRecords(authProfileCodes, 1, maxRows)
+        setRecords(fallback.records)
+        setTotal(fallback.total)
+        setReturned(fallback.records.length)
+        setIsCapped(fallback.total > maxRows)
+        setDataSource('local-fallback')
+        setError('json-server unavailable, using local fallback data.')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load matrix data')
-      } finally {
-        setIsLoading(false)
+        setDataSource('local-fallback')
+        setRecords([])
+        setTotal(0)
+        setReturned(0)
+        setIsCapped(false)
       }
-    }, 50)
-  }, [authProfileCodes, currentPage, pageSize])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [authProfileCodes, maxRows])
 
   useEffect(() => {
     if (authProfileCodes.length === 0) {
       setRecords([])
       setTotal(0)
-      setTotalPages(0)
+      setReturned(0)
+      setIsCapped(false)
+      setDataSource('json-server')
       return
     }
-    fetchData()
-  }, [authProfileCodes, currentPage, pageSize, fetchData])
 
-  const handleSetPage = useCallback((newPage: number) => {
-    setCurrentPage(newPage)
-  }, [])
+    fetchData()
+  }, [authProfileCodes, fetchData])
 
   return {
     records,
     total,
-    page: currentPage,
-    pageSize,
-    totalPages,
+    returned,
+    maxRows,
+    isCapped,
+    dataSource,
     isLoading,
     error,
-    setPage: handleSetPage,
     refetch: fetchData,
   }
 }

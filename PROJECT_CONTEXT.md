@@ -32,6 +32,11 @@ Scripts in package.json:
 - npm run dev
 - npm run build
 - npm run preview
+- npm run api (starts json-server-backed matrix API at http://localhost:4000)
+
+POC startup for UX review:
+- Terminal 1: npm run api
+- Terminal 2: npm run dev
 
 ## 4) High-Level Architecture
 
@@ -121,9 +126,20 @@ File: src/services/MatrixApiService.ts
 
 ### useMatrixData Hook
 File: src/hooks/useMatrixData.ts
-- Wraps MatrixApiService calls
-- Simulates async latency using setTimeout
-- Returns records, total, page, totalPages, loading/error state, and setPage
+- Calls json-server endpoint GET /matrix with repeated profileCode params
+- Enforces capped payload size (default maxRows=3000) for smoother UI behavior
+- Falls back to local MatrixApiService generator if json-server is unavailable
+- Returns records, total, returned, isCapped, loading/error state, and dataSource
+
+### Mock API Server (POC)
+File: mock-api/server.cjs
+- Uses json-server middleware stack
+- Reads source JSON from src/data/mockMatrixData.json (or MATRIX_DB_PATH env override)
+- Provides:
+  - GET /health
+  - GET /profile-codes
+  - GET /matrix?profileCode=A&profileCode=B&maxRows=3000
+- Matrix endpoint supports multi-profile filtering and capped response payload
 
 ## 8) Components (Reusable Building Blocks)
 
@@ -154,6 +170,7 @@ Split-view-specific wrappers:
 - Some actions intentionally mocked with snackbar messages only
 - MatrixApiService.getRecords scans/generates across totalRecordCount per fetch; good for prototype realism, but potentially expensive for production
 - App currently uses tab state instead of route-based URLs
+- Matrix page currently uses a no-page-number flow and a capped dataset fetch (filter-first UX)
 
 ## 11) Safe Change Guidelines for Future Agents
 
