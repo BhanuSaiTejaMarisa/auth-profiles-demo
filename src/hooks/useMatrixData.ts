@@ -3,6 +3,9 @@ import { MatrixApiService, type MatrixRecord } from '../services/MatrixApiServic
 
 export interface UseMatrixDataOptions {
   authProfileCodes: string[]
+  region?: string
+  country?: string
+  businessGroup?: string
   maxRows?: number
 }
 
@@ -24,6 +27,9 @@ export interface UseMatrixDataResult {
  */
 export function useMatrixData({
   authProfileCodes,
+  region,
+  country,
+  businessGroup,
   maxRows = 3000,
 }: UseMatrixDataOptions): UseMatrixDataResult {
   const [records, setRecords] = useState<MatrixRecord[]>([])
@@ -42,6 +48,9 @@ export function useMatrixData({
       import.meta.env.VITE_MATRIX_API_BASE_URL?.trim() || 'http://localhost:4000'
     const params = new URLSearchParams()
     authProfileCodes.forEach((code) => params.append('profileCode', code))
+    if (region) params.set('region', region)
+    if (country) params.set('country', country)
+    if (businessGroup) params.set('businessGroup', businessGroup)
     params.set('maxRows', String(maxRows))
 
     try {
@@ -58,7 +67,14 @@ export function useMatrixData({
       setDataSource('json-server')
     } catch {
       try {
-        const fallback = MatrixApiService.getRecords(authProfileCodes, 1, maxRows)
+        const fallback = MatrixApiService.search({
+          authProfileCodes,
+          region,
+          country,
+          businessGroup,
+          page: 1,
+          pageSize: maxRows,
+        })
         setRecords(fallback.records)
         setTotal(fallback.total)
         setReturned(fallback.records.length)
@@ -76,7 +92,7 @@ export function useMatrixData({
     } finally {
       setIsLoading(false)
     }
-  }, [authProfileCodes, maxRows])
+  }, [authProfileCodes, region, country, businessGroup, maxRows])
 
   useEffect(() => {
     if (authProfileCodes.length === 0) {

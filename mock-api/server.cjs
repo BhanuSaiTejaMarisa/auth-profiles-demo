@@ -62,6 +62,12 @@ function parseMaxRows(queryValue) {
   return Math.min(Math.floor(parsed), HARD_MAX_ROWS)
 }
 
+function parseOptionalText(value) {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed.length ? trimmed : undefined
+}
+
 server.use(middlewares)
 server.use(jsonServer.bodyParser)
 
@@ -81,6 +87,9 @@ server.get('/profile-codes', (_req, res) => {
 server.get('/matrix', (req, res) => {
   const profileCodes = parseCodes(req.query)
   const maxRows = parseMaxRows(req.query.maxRows)
+  const region = parseOptionalText(req.query.region)
+  const country = parseOptionalText(req.query.country)
+  const businessGroup = parseOptionalText(req.query.businessGroup)
 
   if (!profileCodes.length) {
     res.json({
@@ -95,7 +104,13 @@ server.get('/matrix', (req, res) => {
   }
 
   const codeSet = new Set(profileCodes)
-  const filtered = allRecords.filter((record) => codeSet.has(record.authProfileCode))
+  const filtered = allRecords.filter((record) => {
+    if (!codeSet.has(record.authProfileCode)) return false
+    if (region && record.region !== region) return false
+    if (country && record.country !== country) return false
+    if (businessGroup && record.businessGroup !== businessGroup) return false
+    return true
+  })
 
   res.json({
     total: filtered.length,
@@ -103,6 +118,11 @@ server.get('/matrix', (req, res) => {
     isCapped: filtered.length > maxRows,
     maxRows,
     profileCodes,
+    appliedFilters: {
+      region: region || null,
+      country: country || null,
+      businessGroup: businessGroup || null,
+    },
     records: filtered.slice(0, maxRows),
   })
 })

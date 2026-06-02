@@ -1,6 +1,7 @@
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight'
-import { Box, Chip, IconButton, Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
+import { Box, Chip, IconButton, Paper, Typography } from '@mui/material'
+import { FixedSizeList, type ListChildComponentProps } from 'react-window'
 import type { MatrixRecord } from '../types'
 
 type MatrixGroupSectionProps = {
@@ -11,6 +12,55 @@ type MatrixGroupSectionProps = {
   onToggleExpanded: () => void
   onRowSelectionChange: (recordId: string, checked: boolean) => void
   onGroupSelectionChange: (recordIds: string[], checked: boolean) => void
+}
+
+const ROW_HEIGHT = 34
+const MAX_LIST_HEIGHT = 320
+
+type RowData = {
+  records: MatrixRecord[]
+  selectedMatrixIds: string[]
+  onRowSelectionChange: (recordId: string, checked: boolean) => void
+}
+
+function VirtualRow({ index, style, data }: ListChildComponentProps<RowData>) {
+  const record = data.records[index]
+  const checked = data.selectedMatrixIds.includes(record.id)
+
+  return (
+    <Box
+      style={style}
+      className="matrix-grid-row"
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: '36px repeat(12, minmax(88px, 1fr))',
+        alignItems: 'center',
+        borderBottom: '1px solid #e3e9f3',
+        backgroundColor: checked ? '#edf4ff' : '#fff',
+        px: 1,
+      }}
+    >
+      <Box>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(event) => data.onRowSelectionChange(record.id, event.target.checked)}
+        />
+      </Box>
+      <Box>{record.businessUnit}</Box>
+      <Box>{record.productLine}</Box>
+      <Box>{record.pfCode}</Box>
+      <Box>{record.maxPlPercent}</Box>
+      <Box>{record.minMarginPercent}</Box>
+      <Box>{record.authMarginFlag}</Box>
+      <Box>{record.plSumAuth}</Box>
+      <Box>{record.maxLineAmount}</Box>
+      <Box>{record.dealType}</Box>
+      <Box>{record.startDate}</Box>
+      <Box>{record.endDate}</Box>
+      <Box>{record.updatedBy}</Box>
+    </Box>
+  )
 }
 
 export function MatrixGroupSection({
@@ -58,53 +108,48 @@ export function MatrixGroupSection({
       </Box>
 
       {expanded && (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell padding="checkbox"></TableCell>
-              <TableCell>Bus Unit</TableCell>
-              <TableCell>PL Code</TableCell>
-              <TableCell>PF Code</TableCell>
-              <TableCell>Max PL %</TableCell>
-              <TableCell>Min Margin %</TableCell>
-              <TableCell>Auth Margin</TableCell>
-              <TableCell>PL Sum Auth</TableCell>
-              <TableCell>Max Line Amt</TableCell>
-              <TableCell>Deal Type</TableCell>
-              <TableCell>Start Effective Date</TableCell>
-              <TableCell>End Effective Date</TableCell>
-              <TableCell>Updated By</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {records.map((record) => {
-              const checked = selectedMatrixIds.includes(record.id)
-              return (
-                <TableRow key={record.id} hover selected={checked} sx={{ backgroundColor: checked ? '#edf4ff' : undefined }}>
-                  <TableCell padding="checkbox">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={(event) => onRowSelectionChange(record.id, event.target.checked)}
-                    />
-                  </TableCell>
-                  <TableCell>{record.businessUnit}</TableCell>
-                  <TableCell>{record.productLine}</TableCell>
-                  <TableCell>{record.pfCode}</TableCell>
-                  <TableCell>{record.maxPlPercent}</TableCell>
-                  <TableCell>{record.minMarginPercent}</TableCell>
-                  <TableCell>{record.authMarginFlag}</TableCell>
-                  <TableCell>{record.plSumAuth}</TableCell>
-                  <TableCell>{record.maxLineAmount}</TableCell>
-                  <TableCell>{record.dealType}</TableCell>
-                  <TableCell>{record.startDate}</TableCell>
-                  <TableCell>{record.endDate}</TableCell>
-                  <TableCell>{record.updatedBy}</TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+        <Box>
+          <Box
+            className="matrix-grid-header"
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '36px repeat(12, minmax(88px, 1fr))',
+              alignItems: 'center',
+              px: 1,
+              py: 0.75,
+              borderBottom: '1px solid #e3e9f3',
+              backgroundColor: '#f7f9fc',
+              color: '#425066',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+            }}
+          >
+            <Box></Box>
+            <Box>Bus Unit</Box>
+            <Box>PL Code</Box>
+            <Box>PF Code</Box>
+            <Box>Max PL %</Box>
+            <Box>Min Margin %</Box>
+            <Box>Auth Margin</Box>
+            <Box>PL Sum Auth</Box>
+            <Box>Max Line Amt</Box>
+            <Box>Deal Type</Box>
+            <Box>Start Effective Date</Box>
+            <Box>End Effective Date</Box>
+            <Box>Updated By</Box>
+          </Box>
+
+          <FixedSizeList
+            height={Math.min(records.length * ROW_HEIGHT, MAX_LIST_HEIGHT)}
+            itemCount={records.length}
+            itemSize={ROW_HEIGHT}
+            width="100%"
+            overscanCount={8}
+            itemData={{ records, selectedMatrixIds, onRowSelectionChange }}
+          >
+            {VirtualRow}
+          </FixedSizeList>
+        </Box>
       )}
     </Paper>
   )

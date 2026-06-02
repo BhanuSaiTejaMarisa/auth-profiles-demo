@@ -216,6 +216,19 @@
   padding-right: 2px;
 }
 
+.matrix-grid-row {
+  font-size: 0.74rem;
+  color: #26364f;
+}
+
+.matrix-grid-row > div,
+.matrix-grid-header > div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 8px;
+}
+
 @media (max-width: 960px) {
   .profiles-page-search-grid {
     grid-template-columns: 1fr 1fr;

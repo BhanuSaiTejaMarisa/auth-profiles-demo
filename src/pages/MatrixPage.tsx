@@ -18,7 +18,13 @@ import { ActionToolbar } from '../components/ActionToolbar'
 import { BulkEditPanel } from '../components/BulkEditPanel'
 import { MatrixGroupSection } from '../components/MatrixGroupSection'
 import { useMatrixData } from '../hooks'
-import { mockProfiles, createBulkEditSeed } from '../data/mockData'
+import {
+  mockProfiles,
+  createBulkEditSeed,
+  regionOptions,
+  countryOptions,
+  businessGroupOptions,
+} from '../data/mockData'
 import { MatrixService } from '../services'
 import type { MatrixRecord, BulkEditFormState } from '../types'
 import type { MatrixRecord as ApiMatrixRecord } from '../services/MatrixApiService'
@@ -63,6 +69,9 @@ export function MatrixPage() {
   const [bulkEditForm, setBulkEditForm] = useState<BulkEditFormState>(createBulkEditSeed())
   const [snackbar, setSnackbar] = useState<string>('')
   const [localRecords, setLocalRecords] = useState<MatrixRecord[]>([])
+  const [regionFilter, setRegionFilter] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
+  const [businessGroupFilter, setBusinessGroupFilter] = useState('')
 
   // ====== API Hook (filter-first + capped results) ======
   const {
@@ -76,6 +85,9 @@ export function MatrixPage() {
     error,
   } = useMatrixData({
     authProfileCodes: selectedProfileCodes,
+    region: regionFilter,
+    country: countryFilter,
+    businessGroup: businessGroupFilter,
     maxRows: 3000,
   })
 
@@ -203,6 +215,60 @@ export function MatrixPage() {
             disableCloseOnSelect
             sx={{ flex: 1 }}
           />
+          <FormControl size="small" sx={{ minWidth: 130 }}>
+            <InputLabel>Region</InputLabel>
+            <Select
+              label="Region"
+              value={regionFilter}
+              onChange={(e) => {
+                setRegionFilter(e.target.value)
+                setSelectedMatrixIds([])
+              }}
+            >
+              <MenuItem value="">All</MenuItem>
+              {regionOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 130 }}>
+            <InputLabel>Country</InputLabel>
+            <Select
+              label="Country"
+              value={countryFilter}
+              onChange={(e) => {
+                setCountryFilter(e.target.value)
+                setSelectedMatrixIds([])
+              }}
+            >
+              <MenuItem value="">All</MenuItem>
+              {countryOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Business Group</InputLabel>
+            <Select
+              label="Business Group"
+              value={businessGroupFilter}
+              onChange={(e) => {
+                setBusinessGroupFilter(e.target.value)
+                setSelectedMatrixIds([])
+              }}
+            >
+              <MenuItem value="">All</MenuItem>
+              {businessGroupOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', alignSelf: 'center' }}>
             {isLoading ? (
               <CircularProgress size={16} sx={{ mr: 1 }} />
@@ -258,6 +324,14 @@ export function MatrixPage() {
             </FormControl>
           }
         />
+
+        {/* Active filter summary */}
+        <Box className="panel-section" sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Chip size="small" variant="outlined" label={`Profile Codes: ${selectedProfileCodes.length || 0}`} />
+          <Chip size="small" variant="outlined" label={`Region: ${regionFilter || 'All'}`} />
+          <Chip size="small" variant="outlined" label={`Country: ${countryFilter || 'All'}`} />
+          <Chip size="small" variant="outlined" label={`Business Group: ${businessGroupFilter || 'All'}`} />
+        </Box>
 
         {/* Meta row */}
         <Box className="panel-section panel-meta-row">
