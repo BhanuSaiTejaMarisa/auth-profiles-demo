@@ -25,6 +25,7 @@ import { useProfileFiltering, usePagination, useModalOperations } from '../hooks
 import { ProfileService } from '../services/index'
 import { mockProfiles, mockMatrixRecords, defaultModalForm, activeOptions } from '../data/mockData'
 import type { Profile, MatrixRecord } from '../types'
+import { downloadCsv, toCsv } from '../utils/csv'
 
 export function ProfilesPage() {
   // ====== State ======
@@ -97,6 +98,47 @@ export function ProfilesPage() {
     applyModalLogic(profiles, matrixRecords)
   }
 
+  const handleExportProfiles = () => {
+    const rows = profiles.filter((profile) => selectedProfileIds.includes(profile.id))
+    if (!rows.length) {
+      setSnackbar('Select one or more profile rows to export filtered profile data.')
+      return
+    }
+
+    const csv = toCsv(rows, [
+      'id',
+      'code',
+      'description',
+      'active',
+      'lastChange',
+      'region',
+      'subRegion',
+      'country',
+    ])
+    downloadCsv(csv, 'generic-auth-profiles-selected-export.csv')
+    setSnackbar('Selected authorization profiles export downloaded.')
+  }
+
+  const handleExportAllProfiles = () => {
+    if (!profiles.length) {
+      setSnackbar('No profile rows available to export.')
+      return
+    }
+
+    const csv = toCsv(profiles, [
+      'id',
+      'code',
+      'description',
+      'active',
+      'lastChange',
+      'region',
+      'subRegion',
+      'country',
+    ])
+    downloadCsv(csv, 'generic-auth-profiles-all-export.csv')
+    setSnackbar('All authorization profiles export downloaded.')
+  }
+
   const areAllVisible =
     paginatedProfiles.length > 0 &&
     paginatedProfiles.every((p) => selectedProfileIds.includes(p.id))
@@ -164,7 +206,17 @@ export function ProfilesPage() {
               onClick: handleDeleteProfiles,
               disabled: selectedProfileIds.length === 0,
             },
-            { label: 'Export to Excel', kind: 'export', onClick: () => setSnackbar('Export is mocked.') },
+            {
+              label: 'Export Selected',
+              kind: 'export',
+              onClick: handleExportProfiles,
+              disabled: selectedProfileIds.length === 0,
+            },
+            {
+              label: 'Export All Profiles',
+              kind: 'export',
+              onClick: handleExportAllProfiles,
+            },
             { label: 'Filter', kind: 'filter', onClick: () => openModal('filter', 'profile') },
             { label: 'More Actions', kind: 'more', onClick: () => {} },
           ]}

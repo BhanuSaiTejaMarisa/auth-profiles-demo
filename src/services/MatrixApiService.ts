@@ -175,20 +175,26 @@ export class MatrixApiService {
   static search(criteria: {
     authProfileCodes?: string[]
     region?: string
+    subRegion?: string
     country?: string
     businessGroup?: string
+    businessUnit?: string
     page?: number
     pageSize?: number
   }): MatrixApiResponse {
     const allRecords: MatrixRecord[] = []
+    const hasProfileCodeFilter = Boolean(criteria.authProfileCodes?.length)
+
     for (let i = 0; i < this.totalRecordCount; i++) {
       const record = this.generateRecord(i)
 
       // Apply filters
-      if (criteria.authProfileCodes && !criteria.authProfileCodes.includes(record.authProfileCode)) continue
+      if (hasProfileCodeFilter && !criteria.authProfileCodes!.includes(record.authProfileCode)) continue
       if (criteria.region && record.region !== criteria.region) continue
+      if (criteria.subRegion && record.subRegion !== criteria.subRegion) continue
       if (criteria.country && record.country !== criteria.country) continue
       if (criteria.businessGroup && record.businessGroup !== criteria.businessGroup) continue
+      if (criteria.businessUnit && record.businessUnit !== criteria.businessUnit) continue
 
       allRecords.push(record)
     }
