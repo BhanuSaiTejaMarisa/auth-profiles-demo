@@ -3,6 +3,7 @@ import {
   Alert,
   Autocomplete,
   Box,
+  Button,
   Chip,
   CircularProgress,
   FormControl,
@@ -22,7 +23,9 @@ import {
 } from '@mui/material'
 import { ActionToolbar } from '../components/ActionToolbar'
 import { BulkEditPanel } from '../components/BulkEditPanel'
+import { ColumnVisibilityMenu } from '../components/ColumnVisibilityMenu'
 import { MatrixGroupSection } from '../components/MatrixGroupSection'
+import type { GroupedColumnDef } from '../components/MatrixGroupSection'
 import { useMatrixData } from '../hooks'
 import {
   mockProfiles,
@@ -39,6 +42,64 @@ import type { MatrixRecord as ApiMatrixRecord } from '../services/MatrixApiServi
 import { downloadUrlAsFile } from '../utils/csv'
 
 const allProfileCodes = mockProfiles.map((p) => p.code)
+
+const GROUPED_COLUMN_OPTIONS: GroupedColumnDef[] = [
+  { key: 'businessUnit', label: 'Bus Unit' },
+  { key: 'productLine', label: 'PL Code' },
+  { key: 'pfCode', label: 'PF Code' },
+  { key: 'maxPlPercent', label: 'Max PL %' },
+  { key: 'minMarginPercent', label: 'Min Margin %' },
+  { key: 'authMarginFlag', label: 'Auth Margin' },
+  { key: 'plSumAuth', label: 'PL Sum Auth' },
+  { key: 'maxLineAmount', label: 'Max Line Amt' },
+  { key: 'dealType', label: 'Deal Type' },
+  { key: 'startDate', label: 'Start Effective Date' },
+  { key: 'endDate', label: 'End Effective Date' },
+  { key: 'updatedBy', label: 'Updated By' },
+]
+
+const FLAT_COLUMN_OPTIONS = [
+  { key: 'authProfileCode', label: 'Auth Profile Code' },
+  { key: 'region', label: 'Region' },
+  { key: 'subRegion', label: 'Sub-Region' },
+  { key: 'country', label: 'Country' },
+  { key: 'businessGroup', label: 'Business Group' },
+  { key: 'businessUnit', label: 'Business Unit' },
+  { key: 'productLine', label: 'PL Code' },
+  { key: 'pfCode', label: 'PF Code' },
+  { key: 'maxPlPercent', label: 'Max PL %' },
+  { key: 'minMarginPercent', label: 'Min Margin %' },
+  { key: 'updatedBy', label: 'Updated By' },
+]
+
+const DEFAULT_VISIBLE_GROUPED_COLUMNS: Record<string, boolean> = {
+  businessUnit: true,
+  productLine: true,
+  pfCode: true,
+  maxPlPercent: true,
+  minMarginPercent: true,
+  authMarginFlag: true,
+  plSumAuth: false,
+  maxLineAmount: false,
+  dealType: true,
+  startDate: false,
+  endDate: false,
+  updatedBy: false,
+}
+
+const DEFAULT_VISIBLE_FLAT_COLUMNS: Record<string, boolean> = {
+  authProfileCode: true,
+  region: true,
+  subRegion: false,
+  country: true,
+  businessGroup: true,
+  businessUnit: true,
+  productLine: true,
+  pfCode: false,
+  maxPlPercent: true,
+  minMarginPercent: true,
+  updatedBy: false,
+}
 
 /**
  * Transform API record format to component expected format
@@ -85,6 +146,31 @@ export function MatrixPage() {
   const [countryFilter, setCountryFilter] = useState('')
   const [businessGroupFilter, setBusinessGroupFilter] = useState('')
   const [businessUnitFilter, setBusinessUnitFilter] = useState('')
+  const [matrixColumnMenuAnchor, setMatrixColumnMenuAnchor] = useState<HTMLElement | null>(null)
+  const [visibleGroupedColumns, setVisibleGroupedColumns] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('matrix-grouped-visible-columns')
+      if (!saved) return DEFAULT_VISIBLE_GROUPED_COLUMNS
+      return {
+        ...DEFAULT_VISIBLE_GROUPED_COLUMNS,
+        ...JSON.parse(saved),
+      }
+    } catch {
+      return DEFAULT_VISIBLE_GROUPED_COLUMNS
+    }
+  })
+  const [visibleFlatColumns, setVisibleFlatColumns] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('matrix-flat-visible-columns')
+      if (!saved) return DEFAULT_VISIBLE_FLAT_COLUMNS
+      return {
+        ...DEFAULT_VISIBLE_FLAT_COLUMNS,
+        ...JSON.parse(saved),
+      }
+    } catch {
+      return DEFAULT_VISIBLE_FLAT_COLUMNS
+    }
+  })
 
   const jsonServerBaseUrl =
     import.meta.env.VITE_MATRIX_API_BASE_URL?.trim() || 'http://localhost:4000'
@@ -96,6 +182,14 @@ export function MatrixPage() {
     Boolean(businessGroupFilter) ||
     Boolean(businessUnitFilter)
   const isProfileMode = selectedProfileCodes.length > 0
+
+  useEffect(() => {
+    localStorage.setItem('matrix-grouped-visible-columns', JSON.stringify(visibleGroupedColumns))
+  }, [visibleGroupedColumns])
+
+  useEffect(() => {
+    localStorage.setItem('matrix-flat-visible-columns', JSON.stringify(visibleFlatColumns))
+  }, [visibleFlatColumns])
 
   // ====== API Hook (filter-first + capped results) ======
   const {
@@ -155,6 +249,30 @@ export function MatrixPage() {
     () => localRecords.filter((r) => selectedMatrixIds.includes(r.id)),
     [localRecords, selectedMatrixIds],
   )
+
+  const groupedVisibleOptions = GROUPED_COLUMN_OPTIONS.filter(
+    (option) => visibleGroupedColumns[option.key],
+  )
+  const flatVisibleOptions = FLAT_COLUMN_OPTIONS.filter((option) => visibleFlatColumns[option.key])
+
+  const activeColumnOptions = mode === 'profile-codes' ? GROUPED_COLUMN_OPTIONS : FLAT_COLUMN_OPTIONS
+  const activeVisibleMap = mode === 'profile-codes' ? visibleGroupedColumns : visibleFlatColumns
+  const activeVisibleCount = activeColumnOptions.filter((option) => activeVisibleMap[option.key]).length
+
+  const toggleMatrixColumn = (key: string) => {
+    if (mode === 'profile-codes') {
+      setVisibleGroupedColumns((current) => {
+        if (current[key] && activeVisibleCount <= 1) return current
+        return { ...current, [key]: !current[key] }
+      })
+      return
+    }
+
+    setVisibleFlatColumns((current) => {
+      if (current[key] && activeVisibleCount <= 1) return current
+      return { ...current, [key]: !current[key] }
+    })
+  }
 
   // ====== Handlers ======
   const handleRowSelectionChange = (recordId: string, checked: boolean) => {
@@ -462,18 +580,36 @@ export function MatrixPage() {
             },
           ]}
           trailing={
-            <FormControl sx={{ minWidth: 180 }} size="small">
-              <InputLabel>Group By</InputLabel>
-              <Select
-                label="Group By"
-                value={isProfileMode ? 'Auth Profile Code' : 'Flat Table'}
-                disabled
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={(event) => setMatrixColumnMenuAnchor(event.currentTarget)}
               >
-                <MenuItem value="Auth Profile Code">Auth Profile Code</MenuItem>
-                <MenuItem value="Flat Table">Flat Table</MenuItem>
-              </Select>
-            </FormControl>
+                Columns
+              </Button>
+              <FormControl sx={{ minWidth: 180 }} size="small">
+                <InputLabel>Group By</InputLabel>
+                <Select
+                  label="Group By"
+                  value={isProfileMode ? 'Auth Profile Code' : 'Flat Table'}
+                  disabled
+                >
+                  <MenuItem value="Auth Profile Code">Auth Profile Code</MenuItem>
+                  <MenuItem value="Flat Table">Flat Table</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           }
+        />
+
+        <ColumnVisibilityMenu
+          anchorEl={matrixColumnMenuAnchor}
+          title={mode === 'profile-codes' ? 'Grouped View Columns' : 'Flat View Columns'}
+          options={activeColumnOptions}
+          visibleMap={activeVisibleMap}
+          onToggle={toggleMatrixColumn}
+          onClose={() => setMatrixColumnMenuAnchor(null)}
         />
 
         {/* Active filter summary */}
@@ -510,6 +646,7 @@ export function MatrixPage() {
                   onToggleExpanded={() => handleToggleExpanded(authProfileCode)}
                   onRowSelectionChange={handleRowSelectionChange}
                   onGroupSelectionChange={handleGroupSelectionChange}
+                  visibleColumns={groupedVisibleOptions}
                 />
               ))
             : (
@@ -518,17 +655,9 @@ export function MatrixPage() {
                   <TableHead>
                     <TableRow>
                       <TableCell padding="checkbox"></TableCell>
-                      <TableCell>Auth Profile Code</TableCell>
-                      <TableCell>Region</TableCell>
-                      <TableCell>Sub-Region</TableCell>
-                      <TableCell>Country</TableCell>
-                      <TableCell>Business Group</TableCell>
-                      <TableCell>Business Unit</TableCell>
-                      <TableCell>PL Code</TableCell>
-                      <TableCell>PF Code</TableCell>
-                      <TableCell>Max PL %</TableCell>
-                      <TableCell>Min Margin %</TableCell>
-                      <TableCell>Updated By</TableCell>
+                      {flatVisibleOptions.map((column) => (
+                        <TableCell key={column.key}>{column.label}</TableCell>
+                      ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -550,17 +679,9 @@ export function MatrixPage() {
                               }
                             />
                           </TableCell>
-                          <TableCell>{record.authProfileCode}</TableCell>
-                          <TableCell>{record.region}</TableCell>
-                          <TableCell>{record.subRegion}</TableCell>
-                          <TableCell>{record.country}</TableCell>
-                          <TableCell>{record.businessGroup}</TableCell>
-                          <TableCell>{record.businessUnit}</TableCell>
-                          <TableCell>{record.productLine}</TableCell>
-                          <TableCell>{record.pfCode}</TableCell>
-                          <TableCell>{record.maxPlPercent}</TableCell>
-                          <TableCell>{record.minMarginPercent}</TableCell>
-                          <TableCell>{record.updatedBy}</TableCell>
+                          {flatVisibleOptions.map((column) => (
+                            <TableCell key={column.key}>{String((record as any)[column.key])}</TableCell>
+                          ))}
                         </TableRow>
                       )
                     })}

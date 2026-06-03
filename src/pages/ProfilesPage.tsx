@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
+  Button,
+  Checkbox,
   Box,
+  FormControlLabel,
+  FormGroup,
   FormControl,
   InputAdornment,
   InputLabel,
+  Menu,
   MenuItem,
   Paper,
   Select,
@@ -27,6 +32,26 @@ import { mockProfiles, mockMatrixRecords, defaultModalForm, activeOptions } from
 import type { Profile, MatrixRecord } from '../types'
 import { downloadCsv, toCsv } from '../utils/csv'
 
+const PROFILE_COLUMN_OPTIONS = [
+  { key: 'code', label: 'Auth Profile Code' },
+  { key: 'description', label: 'Description' },
+  { key: 'region', label: 'Region' },
+  { key: 'subRegion', label: 'Sub-Region' },
+  { key: 'country', label: 'Country' },
+  { key: 'active', label: 'Active' },
+  { key: 'lastChange', label: 'Last Change Engg Nr' },
+]
+
+const PROFILE_DEFAULT_VISIBLE_COLUMNS: Record<string, boolean> = {
+  code: true,
+  description: true,
+  region: true,
+  subRegion: false,
+  country: true,
+  active: true,
+  lastChange: false,
+}
+
 export function ProfilesPage() {
   // ====== State ======
   const [profiles, setProfiles] = useState<Profile[]>(mockProfiles)
@@ -38,6 +63,23 @@ export function ProfilesPage() {
     description: '',
     active: 'all' as 'all' | 'active' | 'inactive',
   })
+  const [profileColumnMenuAnchor, setProfileColumnMenuAnchor] = useState<HTMLElement | null>(null)
+  const [visibleProfileColumns, setVisibleProfileColumns] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('profiles-visible-columns')
+      if (!saved) return PROFILE_DEFAULT_VISIBLE_COLUMNS
+      return {
+        ...PROFILE_DEFAULT_VISIBLE_COLUMNS,
+        ...JSON.parse(saved),
+      }
+    } catch {
+      return PROFILE_DEFAULT_VISIBLE_COLUMNS
+    }
+  })
+
+  useEffect(() => {
+    localStorage.setItem('profiles-visible-columns', JSON.stringify(visibleProfileColumns))
+  }, [visibleProfileColumns])
 
   // ====== Derived data ======
   const filteredProfiles = useProfileFiltering(profiles, profileSearch, null)
@@ -143,6 +185,23 @@ export function ProfilesPage() {
     paginatedProfiles.length > 0 &&
     paginatedProfiles.every((p) => selectedProfileIds.includes(p.id))
 
+  const visibleProfileColumnCount = PROFILE_COLUMN_OPTIONS.filter(
+    (option) => visibleProfileColumns[option.key],
+  ).length
+
+  const toggleProfileColumn = (key: string) => {
+    setVisibleProfileColumns((current) => {
+      if (current[key] && visibleProfileColumnCount <= 1) {
+        return current
+      }
+
+      return {
+        ...current,
+        [key]: !current[key],
+      }
+    })
+  }
+
   return (
     <>
       <Paper className="panel-full" elevation={0}>
@@ -220,7 +279,51 @@ export function ProfilesPage() {
             { label: 'Filter', kind: 'filter', onClick: () => openModal('filter', 'profile') },
             { label: 'More Actions', kind: 'more', onClick: () => {} },
           ]}
+          trailing={
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={(event) => setProfileColumnMenuAnchor(event.currentTarget)}
+            >
+              Columns
+            </Button>
+          }
         />
+
+        <Menu
+          anchorEl={profileColumnMenuAnchor}
+          open={Boolean(profileColumnMenuAnchor)}
+          onClose={() => setProfileColumnMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Box sx={{ px: 2, py: 1.5, minWidth: 250 }}>
+            <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+              Visible Profile Columns
+            </Typography>
+            <FormGroup>
+              {PROFILE_COLUMN_OPTIONS.map((option) => {
+                const checked = Boolean(visibleProfileColumns[option.key])
+                const disableUncheck = checked && visibleProfileColumnCount <= 1
+
+                return (
+                  <FormControlLabel
+                    key={option.key}
+                    control={
+                      <Checkbox
+                        size="small"
+                        checked={checked}
+                        disabled={disableUncheck}
+                        onChange={() => toggleProfileColumn(option.key)}
+                      />
+                    }
+                    label={<Typography sx={{ fontSize: '0.82rem' }}>{option.label}</Typography>}
+                  />
+                )
+              })}
+            </FormGroup>
+          </Box>
+        </Menu>
 
         {/* Meta row */}
         <Box className="panel-section panel-meta-row">
@@ -236,13 +339,13 @@ export function ProfilesPage() {
                 <TableCell padding="checkbox">
                   <input type="checkbox" checked={areAllVisible} onChange={handleToggleAll} />
                 </TableCell>
-                <TableCell>Auth Profile Code</TableCell>
-                <TableCell>Description</TableCell>
-                <TableCell>Region</TableCell>
-                <TableCell>Sub-Region</TableCell>
-                <TableCell>Country</TableCell>
-                <TableCell>Active</TableCell>
-                <TableCell>Last Change Engg Nr</TableCell>
+                {visibleProfileColumns.code && <TableCell>Auth Profile Code</TableCell>}
+                {visibleProfileColumns.description && <TableCell>Description</TableCell>}
+                {visibleProfileColumns.region && <TableCell>Region</TableCell>}
+                {visibleProfileColumns.subRegion && <TableCell>Sub-Region</TableCell>}
+                {visibleProfileColumns.country && <TableCell>Country</TableCell>}
+                {visibleProfileColumns.active && <TableCell>Active</TableCell>}
+                {visibleProfileColumns.lastChange && <TableCell>Last Change Engg Nr</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -265,13 +368,13 @@ export function ProfilesPage() {
                         onClick={(e) => e.stopPropagation()}
                       />
                     </TableCell>
-                    <TableCell>{profile.code}</TableCell>
-                    <TableCell>{profile.description}</TableCell>
-                    <TableCell>{profile.region}</TableCell>
-                    <TableCell>{profile.subRegion}</TableCell>
-                    <TableCell>{profile.country}</TableCell>
-                    <TableCell>{profile.active ? 'Yes' : 'No'}</TableCell>
-                    <TableCell>{profile.lastChange}</TableCell>
+                    {visibleProfileColumns.code && <TableCell>{profile.code}</TableCell>}
+                    {visibleProfileColumns.description && <TableCell>{profile.description}</TableCell>}
+                    {visibleProfileColumns.region && <TableCell>{profile.region}</TableCell>}
+                    {visibleProfileColumns.subRegion && <TableCell>{profile.subRegion}</TableCell>}
+                    {visibleProfileColumns.country && <TableCell>{profile.country}</TableCell>}
+                    {visibleProfileColumns.active && <TableCell>{profile.active ? 'Yes' : 'No'}</TableCell>}
+                    {visibleProfileColumns.lastChange && <TableCell>{profile.lastChange}</TableCell>}
                   </TableRow>
                 )
               })}

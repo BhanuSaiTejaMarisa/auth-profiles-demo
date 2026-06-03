@@ -4,6 +4,25 @@ import { Box, Chip, IconButton, Paper, Typography } from '@mui/material'
 import { FixedSizeList, type ListChildComponentProps } from 'react-window'
 import type { MatrixRecord } from '../types'
 
+type GroupedColumnKey =
+  | 'businessUnit'
+  | 'productLine'
+  | 'pfCode'
+  | 'maxPlPercent'
+  | 'minMarginPercent'
+  | 'authMarginFlag'
+  | 'plSumAuth'
+  | 'maxLineAmount'
+  | 'dealType'
+  | 'startDate'
+  | 'endDate'
+  | 'updatedBy'
+
+export type GroupedColumnDef = {
+  key: GroupedColumnKey
+  label: string
+}
+
 type MatrixGroupSectionProps = {
   authProfileCode: string
   records: MatrixRecord[]
@@ -12,6 +31,7 @@ type MatrixGroupSectionProps = {
   onToggleExpanded: () => void
   onRowSelectionChange: (recordId: string, checked: boolean) => void
   onGroupSelectionChange: (recordIds: string[], checked: boolean) => void
+  visibleColumns: GroupedColumnDef[]
 }
 
 const ROW_HEIGHT = 34
@@ -21,11 +41,13 @@ type RowData = {
   records: MatrixRecord[]
   selectedMatrixIds: string[]
   onRowSelectionChange: (recordId: string, checked: boolean) => void
+  visibleColumns: GroupedColumnDef[]
 }
 
 function VirtualRow({ index, style, data }: ListChildComponentProps<RowData>) {
   const record = data.records[index]
   const checked = data.selectedMatrixIds.includes(record.id)
+  const gridColumns = `36px ${data.visibleColumns.map(() => 'minmax(88px, 1fr)').join(' ')}`
 
   return (
     <Box
@@ -33,7 +55,7 @@ function VirtualRow({ index, style, data }: ListChildComponentProps<RowData>) {
       className="matrix-grid-row"
       sx={{
         display: 'grid',
-        gridTemplateColumns: '36px repeat(12, minmax(88px, 1fr))',
+        gridTemplateColumns: gridColumns,
         alignItems: 'center',
         borderBottom: '1px solid #e3e9f3',
         backgroundColor: checked ? '#edf4ff' : '#fff',
@@ -47,18 +69,9 @@ function VirtualRow({ index, style, data }: ListChildComponentProps<RowData>) {
           onChange={(event) => data.onRowSelectionChange(record.id, event.target.checked)}
         />
       </Box>
-      <Box>{record.businessUnit}</Box>
-      <Box>{record.productLine}</Box>
-      <Box>{record.pfCode}</Box>
-      <Box>{record.maxPlPercent}</Box>
-      <Box>{record.minMarginPercent}</Box>
-      <Box>{record.authMarginFlag}</Box>
-      <Box>{record.plSumAuth}</Box>
-      <Box>{record.maxLineAmount}</Box>
-      <Box>{record.dealType}</Box>
-      <Box>{record.startDate}</Box>
-      <Box>{record.endDate}</Box>
-      <Box>{record.updatedBy}</Box>
+      {data.visibleColumns.map((column) => (
+        <Box key={column.key}>{String(record[column.key])}</Box>
+      ))}
     </Box>
   )
 }
@@ -71,6 +84,7 @@ export function MatrixGroupSection({
   onToggleExpanded,
   onRowSelectionChange,
   onGroupSelectionChange,
+  visibleColumns,
 }: MatrixGroupSectionProps) {
   const groupIds = records.map((record) => record.id)
   const isGroupSelected = groupIds.every((id) => selectedMatrixIds.includes(id))
@@ -109,11 +123,12 @@ export function MatrixGroupSection({
 
       {expanded && (
         <Box>
+          {visibleColumns.length > 0 && (
           <Box
             className="matrix-grid-header"
             sx={{
               display: 'grid',
-              gridTemplateColumns: '36px repeat(12, minmax(88px, 1fr))',
+              gridTemplateColumns: `36px ${visibleColumns.map(() => 'minmax(88px, 1fr)').join(' ')}`,
               alignItems: 'center',
               px: 1,
               py: 0.75,
@@ -125,19 +140,11 @@ export function MatrixGroupSection({
             }}
           >
             <Box></Box>
-            <Box>Bus Unit</Box>
-            <Box>PL Code</Box>
-            <Box>PF Code</Box>
-            <Box>Max PL %</Box>
-            <Box>Min Margin %</Box>
-            <Box>Auth Margin</Box>
-            <Box>PL Sum Auth</Box>
-            <Box>Max Line Amt</Box>
-            <Box>Deal Type</Box>
-            <Box>Start Effective Date</Box>
-            <Box>End Effective Date</Box>
-            <Box>Updated By</Box>
+            {visibleColumns.map((column) => (
+              <Box key={column.key}>{column.label}</Box>
+            ))}
           </Box>
+          )}
 
           <FixedSizeList
             height={Math.min(records.length * ROW_HEIGHT, MAX_LIST_HEIGHT)}
@@ -145,7 +152,7 @@ export function MatrixGroupSection({
             itemSize={ROW_HEIGHT}
             width="100%"
             overscanCount={8}
-            itemData={{ records, selectedMatrixIds, onRowSelectionChange }}
+            itemData={{ records, selectedMatrixIds, onRowSelectionChange, visibleColumns }}
           >
             {VirtualRow}
           </FixedSizeList>

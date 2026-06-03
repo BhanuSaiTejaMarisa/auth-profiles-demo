@@ -14,6 +14,21 @@ import { MatrixGroupSection } from '../MatrixGroupSection'
 import { BulkEditPanel } from '../BulkEditPanel'
 import type { Profile, MatrixRecord } from '../../types'
 
+const DEFAULT_GROUPED_VISIBLE_COLUMNS = [
+  { key: 'businessUnit', label: 'Bus Unit' },
+  { key: 'productLine', label: 'PL Code' },
+  { key: 'pfCode', label: 'PF Code' },
+  { key: 'maxPlPercent', label: 'Max PL %' },
+  { key: 'minMarginPercent', label: 'Min Margin %' },
+  { key: 'authMarginFlag', label: 'Auth Margin' },
+  { key: 'plSumAuth', label: 'PL Sum Auth' },
+  { key: 'maxLineAmount', label: 'Max Line Amt' },
+  { key: 'dealType', label: 'Deal Type' },
+  { key: 'startDate', label: 'Start Effective Date' },
+  { key: 'endDate', label: 'End Effective Date' },
+  { key: 'updatedBy', label: 'Updated By' },
+] as const
+
 interface MatrixPanelProps {
   selectedProfiles: Profile[]
   groupedMatrixRecords: Record<string, MatrixRecord[]>
@@ -106,6 +121,7 @@ export const MatrixPanel: FC<MatrixPanelProps> = ({
             onToggleExpanded={() => onToggleExpanded(authProfileCode)}
             onRowSelectionChange={onRowSelectionChange}
             onGroupSelectionChange={onGroupSelectionChange}
+            visibleColumns={[...DEFAULT_GROUPED_VISIBLE_COLUMNS]}
           />
         ))}
         {!Object.keys(groupedMatrixRecords).length && (
