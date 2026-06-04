@@ -17,7 +17,7 @@ const HARD_MAX_ROWS = 10000
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 200
 const HARD_MAX_PAGE_SIZE = 1000
-const PORT = Number(process.env.MATRIX_API_PORT || 4000)
+const PORT = Number(process.env.PORT || process.env.MATRIX_API_PORT || 4000)
 
 function loadRecords(dbPath) {
   if (!fs.existsSync(dbPath)) {
