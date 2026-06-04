@@ -127,7 +127,15 @@ function adaptApiRecord(apiRecord: ApiMatrixRecord): MatrixRecord {
   }
 }
 
-export function MatrixPage() {
+interface MatrixPageProps {
+  externalSelectedProfileCodes?: string[]
+  profileCodesReadOnly?: boolean
+}
+
+export function MatrixPage({
+  externalSelectedProfileCodes,
+  profileCodesReadOnly = false,
+}: MatrixPageProps = {}) {
   // ====== State ======
   const [selectedProfileCodes, setSelectedProfileCodes] = useState<string[]>([
     mockProfiles[0].code,
@@ -175,13 +183,17 @@ export function MatrixPage() {
   const jsonServerBaseUrl =
     import.meta.env.VITE_MATRIX_API_BASE_URL?.trim() || 'http://localhost:4000'
 
-  const hasBroadFilters =
-    Boolean(regionFilter) ||
-    Boolean(subRegionFilter) ||
-    Boolean(countryFilter) ||
-    Boolean(businessGroupFilter) ||
-    Boolean(businessUnitFilter)
   const isProfileMode = selectedProfileCodes.length > 0
+
+  useEffect(() => {
+    if (!externalSelectedProfileCodes) {
+      return
+    }
+
+    setSelectedProfileCodes(externalSelectedProfileCodes)
+    setMatrixPage(1)
+    setSelectedMatrixIds([])
+  }, [externalSelectedProfileCodes])
 
   useEffect(() => {
     localStorage.setItem('matrix-grouped-visible-columns', JSON.stringify(visibleGroupedColumns))
@@ -334,16 +346,8 @@ export function MatrixPage() {
   }
 
   const handleProfileCodesChange = (codes: string[]) => {
-    if (codes.length > 0 && hasBroadFilters) {
-      const confirmed = window.confirm(
-        'Switching to Profile Code mode will clear Region/Sub-Region/Country/Business filters. Continue?',
-      )
-      if (!confirmed) return
-      setRegionFilter('')
-      setSubRegionFilter('')
-      setCountryFilter('')
-      setBusinessGroupFilter('')
-      setBusinessUnitFilter('')
+    if (profileCodesReadOnly) {
+      return
     }
 
     setSelectedProfileCodes(codes)
@@ -355,14 +359,6 @@ export function MatrixPage() {
     setter: (value: string) => void,
     nextValue: string,
   ) => {
-    if (nextValue && selectedProfileCodes.length > 0) {
-      const confirmed = window.confirm(
-        'Switching to broad filters will clear selected Profile Codes and use flat table mode. Continue?',
-      )
-      if (!confirmed) return
-      setSelectedProfileCodes([])
-    }
-
     setter(nextValue)
     setMatrixPage(1)
     setSelectedMatrixIds([])
@@ -421,6 +417,7 @@ export function MatrixPage() {
             options={allProfileCodes}
             value={selectedProfileCodes}
             onChange={(_, newValue) => handleProfileCodesChange(newValue)}
+            disabled={profileCodesReadOnly}
             renderInput={(params) => (
               <TextField
                 {...params}

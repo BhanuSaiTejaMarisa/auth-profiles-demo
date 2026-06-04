@@ -52,7 +52,15 @@ const PROFILE_DEFAULT_VISIBLE_COLUMNS: Record<string, boolean> = {
   lastChange: false,
 }
 
-export function ProfilesPage() {
+interface ProfilesPageProps {
+  selectedProfileCodes?: string[]
+  onSelectedProfileCodesChange?: (codes: string[]) => void
+}
+
+export function ProfilesPage({
+  selectedProfileCodes,
+  onSelectedProfileCodesChange,
+}: ProfilesPageProps = {}) {
   // ====== State ======
   const [profiles, setProfiles] = useState<Profile[]>(mockProfiles)
   const [matrixRecords, setMatrixRecords] = useState<MatrixRecord[]>(mockMatrixRecords)
@@ -80,6 +88,26 @@ export function ProfilesPage() {
   useEffect(() => {
     localStorage.setItem('profiles-visible-columns', JSON.stringify(visibleProfileColumns))
   }, [visibleProfileColumns])
+
+  useEffect(() => {
+    if (!selectedProfileCodes) return
+
+    const selectedIds = profiles
+      .filter((profile) => selectedProfileCodes.includes(profile.code))
+      .map((profile) => profile.id)
+
+    setSelectedProfileIds(selectedIds)
+  }, [profiles, selectedProfileCodes])
+
+  useEffect(() => {
+    if (!onSelectedProfileCodesChange) return
+
+    const codes = profiles
+      .filter((profile) => selectedProfileIds.includes(profile.id))
+      .map((profile) => profile.code)
+
+    onSelectedProfileCodesChange(codes)
+  }, [onSelectedProfileCodesChange, profiles, selectedProfileIds])
 
   // ====== Derived data ======
   const filteredProfiles = useProfileFiltering(profiles, profileSearch, null)
