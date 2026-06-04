@@ -5,6 +5,10 @@ import { FixedSizeList, type ListChildComponentProps } from 'react-window'
 import type { MatrixRecord } from '../types'
 
 type GroupedColumnKey =
+  | 'region'
+  | 'subRegion'
+  | 'country'
+  | 'businessGroup'
   | 'businessUnit'
   | 'productLine'
   | 'pfCode'

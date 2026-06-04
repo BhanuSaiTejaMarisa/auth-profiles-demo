@@ -44,6 +44,10 @@ import { downloadUrlAsFile } from '../utils/csv'
 const allProfileCodes = mockProfiles.map((p) => p.code)
 
 const GROUPED_COLUMN_OPTIONS: GroupedColumnDef[] = [
+  { key: 'region', label: 'Region' },
+  { key: 'subRegion', label: 'Sub-Region' },
+  { key: 'country', label: 'Country' },
+  { key: 'businessGroup', label: 'Business Group' },
   { key: 'businessUnit', label: 'Bus Unit' },
   { key: 'productLine', label: 'PL Code' },
   { key: 'pfCode', label: 'PF Code' },
@@ -69,10 +73,20 @@ const FLAT_COLUMN_OPTIONS = [
   { key: 'pfCode', label: 'PF Code' },
   { key: 'maxPlPercent', label: 'Max PL %' },
   { key: 'minMarginPercent', label: 'Min Margin %' },
+  { key: 'authMarginFlag', label: 'Auth Margin' },
+  { key: 'plSumAuth', label: 'PL Sum Auth' },
+  { key: 'maxLineAmount', label: 'Max Line Amt' },
+  { key: 'dealType', label: 'Deal Type' },
+  { key: 'startDate', label: 'Start Effective Date' },
+  { key: 'endDate', label: 'End Effective Date' },
   { key: 'updatedBy', label: 'Updated By' },
 ]
 
 const DEFAULT_VISIBLE_GROUPED_COLUMNS: Record<string, boolean> = {
+  region: false,
+  subRegion: false,
+  country: false,
+  businessGroup: false,
   businessUnit: true,
   productLine: true,
   pfCode: true,
@@ -98,6 +112,12 @@ const DEFAULT_VISIBLE_FLAT_COLUMNS: Record<string, boolean> = {
   pfCode: false,
   maxPlPercent: true,
   minMarginPercent: true,
+  authMarginFlag: false,
+  plSumAuth: false,
+  maxLineAmount: false,
+  dealType: false,
+  startDate: false,
+  endDate: false,
   updatedBy: false,
 }
 
